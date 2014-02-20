@@ -4,9 +4,6 @@
  * Hooks and callbacks for this module.
  */
 
-// Includes functions for connecting to Solr and Luke.
-//require_once dirname(__FILE__) . '/includes/luke.inc';
-
 function islandora_newspaper_landing_page_menu() {
   $items = array();
   $items['islandora/object/%islandora_object/newspaper_about'] = array(
@@ -18,17 +15,6 @@ function islandora_newspaper_landing_page_menu() {
     'access callback' => 'islandora_newspaper_landing_page_access',
     'access arguments' => array(2),
   );
-  /*
-  $items['admin/islandora/newspaper'] = array(
-    'title' => 'Newspaper Collection',
-    'description' => 'Configure the Newspaper Solution Pack.',
-    'page callback' => 'drupal_get_form',
-    'access arguments' => array('administer site configuration'),
-    'page arguments' => array('islandora_newspaper_admin_settings_form'),
-    'file' => 'includes/admin.form.inc',
-    'type' => MENU_NORMAL_ITEM,
-  );
-  */
   $items['admin/islandora/landing_page'] = array(
     'title' => 'Newspaper Landing Page',
     'description' => 'Configure the Newspaper Landing Page.',
@@ -38,14 +24,6 @@ function islandora_newspaper_landing_page_menu() {
     'file' => 'islandora_newspaper_landing_page.admin.inc',
     //'type' => MENU_LOCAL_TASK,
     'type' => MENU_NORMAL_ITEM,
-  );
-  $items['landing_page/autocomplete_luke'] = array(
-    'title' => 'Islandora Newspaper Landing Page Luke autocomplete',
-    'description' => 'Autocomplete callback to populate solr text fields.',
-    'page callback' => '_islandora_solr_autocomplete_luke',
-    'access arguments' => array('administer islandora solr'),
-    'file' => 'includes/admin.inc',
-    'type' => MENU_CALLBACK,
   );
   return $items;
 }
@@ -183,14 +161,17 @@ function islandora_newspaper_landing_page_preprocess_islandora_newspaper_landing
  * Implements hook_block_info().
  */
 function islandora_newspaper_landing_page_block_info() {
+
   $blocks['history'] = array(
     'info' => t('This Day in History'),
     'cache' => DRUPAL_NO_CACHE,
   );
-  $blocks['alphabetnews'] = array(
-    'info' => t('Alphabetical Newspapers'),
+
+  $blocks['social'] = array(
+    'info' => t('Social Media'),
     'cache' => DRUPAL_NO_CACHE,
   );
+
   return $blocks;
 }
 
@@ -204,55 +185,17 @@ function islandora_newspaper_landing_page_block_view($delta = '') {
 
   switch ($delta) {
     case 'history':
-      // Get date formats.
-      $date = date_create(date('d-m-Y'));
-      $history_date = date_format(date_sub($date, date_interval_create_from_date_string("100 years")), "Y-m-d");
-      $history_date_full = date_format($date, "F d, Y");
-      $history_date_time = $history_date . "T00:00:00Z";
 
-      // Solr query.
-      $solr_handler = variable_get('islandora_solr_request_handler', FALSE);
-      $namespaces_enforced = variable_get('islandora_namespace_restriction_enforced', FALSE);
-      $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-      $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
-      $solr->setCreateDocuments(0);
-      $cmodel = $solr->escape('islandora:newspaperIssueCModel');
-      $history_date_time = $solr->escape($history_date_time);
-      $solr_query = "content_model_ms:$cmodel AND mods_originInfo_dateIssued_dt:$history_date_time";
-      $solr_params = array();
-      $solr_params['fl'][] = "PID, mods_originInfo_dateIssued_dt, mods_titleInfo_nonSort_ms, mods_titleInfo_title_ms";
-      $solr_params['sort'] = array('mods_originInfo_dateIssued_dt' . ' asc');
+      $interval[1] = "100 years";
+      $interval[2] = "75 years";
+      $interval[3] = "50 years";
 
-      if ($solr_handler) {
-        $solr_params['qt'] = $solr_handler;
-      }
+      foreach($interval as $years) {
+        $history_date = islandora_newspaper_landing_page_get_date_formats($years);
+        $solr_results = islandora_newspaper_landing_page_get_past_issue($history_date['time']);
 
-      if ($namespaces_enforced) {
-        $namespace_list = trim(variable_get('islandora_pids_allowed', ''));
-        if ($namespace_list) {
-          $namespaces = preg_split('/[,|\s]/', $namespace_list);
-          $namespace_array = array();
-          foreach (array_filter($namespaces) as $namespace) {
-            $namespace_array[] = 'PID:' . Apache_Solr_Service::escape($namespace) . '*';
-          }
-          $solr_params['fq'][] = implode(' OR ', $namespace_array);
-        }
-      }
-
-      try {
-        $start = 0;
-        $max_results = 5;
-        $method = 'GET';
-        $results = $solr->search($solr_query, $start, $max_results, $solr_params, $method);
-      }
-      catch (Exception $e) {
-        watchdog('islandora_newspaper_landing_page', 'Error getting solr results %e',
-          array('%e' => $e->getMessage()));
-      }
-
-      $solr_results = NULL;
-      if (!empty($results)) {
-        $solr_results = json_decode($results->getRawResponse(), TRUE);
+        if($solr_results['response']['docs'])
+          break;
       }
 
       $block['subject'] = t('This Day in History');
@@ -263,8 +206,6 @@ function islandora_newspaper_landing_page_block_view($delta = '') {
         $random_pick = array_rand($solr_results['response']['docs']);
         $new_pid = $solr_results['response']['docs'][$random_pick]['PID'];
         $title = $solr_results['response']['docs'][$random_pick]['mods_titleInfo_nonSort_ms'][0] . " " . $solr_results['response']['docs'][0]['mods_titleInfo_title_ms'][0];
-
-        // Get the random object selected.
         $object = islandora_object_load($new_pid);
 
         if($object) {
@@ -274,26 +215,16 @@ function islandora_newspaper_landing_page_block_view($delta = '') {
 
             $block['content'] =
               "<div class=\"block-body\">
-                <a href = \"$path\"><img src = \"$thumb\"><br/>$title</a><br/>$history_date_full
-              </div>";
+                <a href = \"$path\"><img src = \"$thumb\"><br/>$title</a><br/>" . $history_date['full'] .
+              "</div>";
           }
           else {
-            $block['content'] = "<div class=\"block-body\"><a href = \"$path\">$title</a><br/>$history_date_full</div>";
+            $block['content'] = "<div class=\"block-body\"><a href = \"$path\">$title</a><br/>" . $history_date['full'] . "</div>";
           }
         }
       }
       else
-        $block['content'] = "<div class = \"block-body\">Content not available.</div>";
-
-      /* Add social media icons
-      $block['content'] .=
-      "<br/>
-      <div class=\"social-icons\">
-        <a href=\"http://peinewspapers.tumblr.com/\" tumblr-icon=\"&#62230;\"></a>
-        <a href=\"https://twitter.com/peinewspapers\" twitter-icon=\"&#62217;\"></a>
-        <a href=\"https://www.facebook.com/dailynewspaperpei\" facebook-icon=\"&#62222;\"></a>
-      </div>";
-      */
+        $block['content'] = "<div class = \"block-body\">No newspaper issues published on this date 100, 75 or 50 years ago.</div>";
 
       // Add social media images
       $image_dir = $base_url . '/' . drupal_get_path('module', 'islandora_newspaper_landing_page') . '/images/';
@@ -301,86 +232,103 @@ function islandora_newspaper_landing_page_block_view($delta = '') {
       $block['content'] .=
         "<div class=\"social-icons\">
           <a href=\"http://peinewspapers.tumblr.com/\"><img src=$image_dir" . 'tumblr.png' . " /></a>
-          <a href=\"https://twitter.com/peinewspapers\"><img src=" . $base_url . '/' . drupal_get_path('module', 'islandora_newspaper_landing_page') . '/images/twitter.png' . " /></a>
-          <a href=\"https://www.facebook.com/dailynewspaperpei\"><img src=" . $base_url . '/' . drupal_get_path('module', 'islandora_newspaper_landing_page') . '/images/facebook.png' . " /></a>
+          <a href=\"https://twitter.com/peinewspapers\"><img src=$image_dir" . 'twitter.png' . " /></a>
+          <a href=\"https://www.facebook.com/dailynewspaperpei\"><img src=$image_dir" . 'facebook.png' . " /></a>
+        </div>";
+
+      break;
+
+    case "social":
+
+      $block['subject'] = t('Social Media');
+
+      // Add social media images
+      $image_dir = $base_url . '/' . drupal_get_path('module', 'islandora_newspaper_landing_page') . '/images/';
+
+      $block['content'] =
+        "<div class=\"social-icons\">
+          <a href=\"http://peinewspapers.tumblr.com/\"><img src=$image_dir" . 'tumblr.png' . " /></a>
+          <a href=\"https://twitter.com/peinewspapers\"><img src=$image_dir" . 'twitter.png' . " /></a>
+          <a href=\"https://www.facebook.com/dailynewspaperpei\"><img src=$image_dir" . 'facebook.png' . " /></a>
         </div>";
 
     break;
-
-    case "alphabetnews":
-
-      // Solr query.
-      $solr_handler = variable_get('islandora_solr_request_handler', FALSE);
-      $namespaces_enforced = variable_get('islandora_namespace_restriction_enforced', FALSE);
-      $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-      $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
-      $solr->setCreateDocuments(0);
-      $cmodel = $solr->escape('islandora:newspaperCModel');
-      $solr_query = "content_model_ms:$cmodel";
-      $solr_params = array();
-      $solr_params['fl'][] = "PID, fgs_label_s";
-      $solr_params['sort'] = array('fgs_label_s' . ' asc');
-
-      if ($solr_handler) {
-        $solr_params['qt'] = $solr_handler;
-      }
-
-      if ($namespaces_enforced) {
-        $namespace_list = trim(variable_get('islandora_pids_allowed', ''));
-        if ($namespace_list) {
-          $namespaces = preg_split('/[,|\s]/', $namespace_list);
-          $namespace_array = array();
-          foreach (array_filter($namespaces) as $namespace) {
-            $namespace_array[] = 'PID:' . Apache_Solr_Service::escape($namespace) . '*';
-          }
-          $solr_params['fq'][] = implode(' OR ', $namespace_array);
-        }
-      }
-
-      try {
-        $start = 0;
-        $max_results = 200;
-        $method = 'GET';
-        $results = $solr->search($solr_query, $start, $max_results, $solr_params, $method);
-      }
-      catch (Exception $e) {
-        watchdog('islandora_newspaper_landing_page', 'Error getting solr results %e',
-          array('%e' => $e->getMessage()));
-      }
-
-      $solr_results = NULL;
-      if (!empty($results)) {
-        $solr_results = json_decode($results->getRawResponse(), TRUE);
-      }
-
-      if ($solr_results['response']['docs']) {
-
-        foreach($solr_results['response']['docs'] as $newspaper) {
-          if($newspaper['fgs_label_s'][0])
-            $alpha_list[$newspaper['fgs_label_s'][0]][$newspaper['PID']] = $newspaper['fgs_label_s'];
-        }
-      }
-
-      $block['subject'] = t('Alphabetical Newspapers');
-      $block['content'] = "";
-
-      foreach($alpha_list as $letter => $paper) {
-        $block['content'] .= "<div class=\"titles-block-body\"><div class=\"letter-block\">$letter</div><div class=\"titles-block\">";
-        foreach($paper as $pid => $alpha_title) {
-
-          // Get the random object selected.
-          $object = islandora_object_load($pid);
-
-          if($object) {
-            $path =  $base_url . "/islandora/object/$pid";
-            $block['content'] .= "<div><a href=\"$path\">$alpha_title</a></div>";
-          }
-        }
-        $block['content'] .= "</div></div>";
-
-      }
-    break;
   }
   return $block;
+}
+
+/**
+ * Function to set various date formats for the Day in History block.
+ *
+ * @param string $interval
+ *  Time interval to look back (e.g. "100 years", "50 years")
+ * @return array $history_date
+ */
+function islandora_newspaper_landing_page_get_date_formats($interval) {
+
+  // Get date formats.
+  $date = date_create(date('d-m-Y'));
+  $temp_date = date_format(date_sub($date, date_interval_create_from_date_string($interval)), "Y-m-d");
+  $history_date['full'] = date_format($date, "F d, Y");
+  $history_date['time'] = $temp_date . "T00:00:00Z";
+
+  return $history_date;
+}
+
+/**
+ * Function to query for and return a past newspaper issue.
+ *
+ * @param string $history_date_time
+ *  A date and time in format: 2014-02-10T00:00:00Z
+ * @return array $solr_results
+ */
+function islandora_newspaper_landing_page_get_past_issue($history_date_time) {
+
+  // Solr query.
+  $solr_handler = variable_get('islandora_solr_request_handler', FALSE);
+  $namespaces_enforced = variable_get('islandora_namespace_restriction_enforced', FALSE);
+  $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
+  $solr->setCreateDocuments(0);
+  $cmodel = $solr->escape('islandora:newspaperIssueCModel');
+  $history_date_time = $solr->escape($history_date_time);
+  $solr_query = "content_model_ms:$cmodel AND mods_originInfo_dateIssued_dt:$history_date_time";
+  $solr_params = array();
+  $solr_params['fl'][] = "PID, mods_originInfo_dateIssued_dt, mods_titleInfo_nonSort_ms, mods_titleInfo_title_ms";
+  $solr_params['sort'] = array('mods_originInfo_dateIssued_dt' . ' asc');
+
+  if ($solr_handler) {
+    $solr_params['qt'] = $solr_handler;
+  }
+
+  if ($namespaces_enforced) {
+    $namespace_list = trim(variable_get('islandora_pids_allowed', ''));
+    if ($namespace_list) {
+      $namespaces = preg_split('/[,|\s]/', $namespace_list);
+      $namespace_array = array();
+      foreach (array_filter($namespaces) as $namespace) {
+        $namespace_array[] = 'PID:' . Apache_Solr_Service::escape($namespace) . '*';
+      }
+      $solr_params['fq'][] = implode(' OR ', $namespace_array);
+    }
+  }
+
+  try {
+    $start = 0;
+    $max_results = 5;
+    $method = 'GET';
+    $results = $solr->search($solr_query, $start, $max_results, $solr_params, $method);
+  }
+  catch (Exception $e) {
+    watchdog('islandora_newspaper_landing_page', 'Error getting solr results %e',
+      array('%e' => $e->getMessage()));
+  }
+
+  $solr_results = NULL;
+  if (!empty($results)) {
+    $solr_results = json_decode($results->getRawResponse(), TRUE);
+  }
+
+  return $solr_results;
 }
 

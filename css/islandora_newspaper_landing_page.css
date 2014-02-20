@@ -8,18 +8,6 @@
   font-style: normal;
 }
 
-/* use social media icons font
-@font-face {
-  font-family: 'EntypoSocialRegular';
-  src: url('fonts/entypo-social.eot');
-  src: url('fonts/entypo-social.eot?#iefix') format('embedded-opentype'),
-  url('fonts/entypo-social.woff') format('woff'),
-  url('fonts/entypo-social.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-*/
-
 .islandora-content-wrapper {
   width:900px;
 }
@@ -111,13 +99,6 @@
   padding-right:3px;
 }
 
-/* for use with social media font icons
-.social-icons a:link {text-decoration:none;}
-.social-icons a:visited {text-decoration:none;}
-.social-icons a:hover {text-decoration:none;}
-.social-icons a:active {text-decoration:none;}
-*/
-
 [tumblr-icon]:before {
   font-family: EntypoSocialRegular;
   content: attr(tumblr-icon);
@@ -132,8 +113,6 @@
   content: attr(twitter-icon);
   font-size: 4em;
   color:#7BB6BA;
-  /*padding-left:4px;*/
-  /*padding-right:8px;*/
 }
 
 [facebook-icon]:before {
@@ -165,14 +144,14 @@
   position:relative;
   float:right;
   width:575px;
-  max-height: 218px;
+  max-height: 167px;
   margin:5px;
   margin-top:15px;
   padding-bottom:15px;
   overflow:hidden;
-  /*border:3px solid red;*/
 }
 
+/*
 .right-sidebar .read-more {
   position:absolute;
   bottom:0;
@@ -182,12 +161,13 @@
   margin:0;
   padding:30px 0;
 }
+*/
 
 .more {
   padding-left:40px;
   position:relative;
   float:right;
-  top:28px;
+  top:5px;
 }
 
 .block-body {
@@ -197,7 +177,6 @@
 .letter-block {
   font-size:16pt;
   font-weight:bold;
-
 }
 
 .titles-block-body {
