@@ -154,7 +154,7 @@
       <?php if (isset($variables['num_issues'])): ?>
         <div class="widget-2-content">
           <div class="widget-2-image" id="widget-calendar"></div>
-          <a href="<?php print $variables['view_path'] ?>">Calendar view</a>
+          <a href="<?php print $variables['view_path'] ?>"><?php print $variables['view_path_label'] ?></a>
         </div>
 
         <div class="widget-2-content">

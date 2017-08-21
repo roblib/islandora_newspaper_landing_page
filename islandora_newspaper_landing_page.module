@@ -156,6 +156,7 @@ function islandora_newspaper_landing_page_preprocess_islandora_newspaper_landing
 
   $variables['front_pages_path'] = $base_url . "/islandora/search/$parent_title_field%3A%28$islandora_object->label%29%20AND%20RELS_EXT_isPageNumber_literal_ms%3A1?sort=$sort_field%20$sort_order";
   $variables['view_path'] = $base_url . "/islandora/object/" . $islandora_object->id;
+  $variables['view_path_label'] = module_exists('islandora_newspaper_calendar_page') ? 'Calendar view' : 'View';
 }
 
 /**
