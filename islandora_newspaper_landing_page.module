@@ -15,13 +15,14 @@ function islandora_newspaper_landing_page_menu() {
     'access callback' => 'islandora_newspaper_landing_page_access',
     'access arguments' => array(2),
   );
-  $items['admin/islandora/tools/newspaper_landing_page'] = array(
+  $items['admin/islandora/landing_page'] = array(
     'title' => 'Newspaper Landing Page',
     'description' => 'Configure the Newspaper Landing Page.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('islandora_newspaper_landing_page_admin_settings'),
     'access arguments' => array('administer site configuration'),
     'file' => 'islandora_newspaper_landing_page.admin.inc',
+    //'type' => MENU_LOCAL_TASK,
     'type' => MENU_NORMAL_ITEM,
   );
   return $items;
