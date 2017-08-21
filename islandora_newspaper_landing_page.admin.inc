@@ -26,13 +26,13 @@ function islandora_newspaper_landing_page_admin_settings($form, &$form_state) {
     '#description' => t('Configure settings for the Islandora Newspaper Landing Page module.'),
   );
 
-  $form['newspaper_landing_page_admin']['parent_title_field'] = array(
+  $form['newspaper_landing_page_admin']['ancestors_field'] = array(
     '#type' => 'textfield',
-    '#title' => t('Parent Title Field'),
+    '#title' => t('Ancestors Field'),
     '#size' => 35,
     '#autocomplete_path' => 'islandora_solr/luke',
-    '#default_value' => variable_get('islandora_newspaper_landing_page_parent_title_field', "PARENT_title_mt"),
-    '#description' => t('Set the parent title field of the "All front pages" search result'),
+    '#default_value' => variable_get('islandora_newspaper_landing_page_ancestors_field', "ancestors_ms"),
+    '#description' => t('A solr field containing the PIDs of an object\'s ancestors. Required for the "All front pages" link.'),
   );
   
   $form['newspaper_landing_page_admin']['sort_field'] = array(
@@ -51,7 +51,7 @@ function islandora_newspaper_landing_page_admin_settings($form, &$form_state) {
       'asc' => t('Ascending'),
       'desc' => t('Descending'),
     ),
-    '#default_value' => variable_get('islandora_newspaper_landing_page_sort_order', 0),
+    '#default_value' => variable_get('islandora_newspaper_landing_page_sort_order', 'asc'),
     '#description' => t('Set the sort order of the "All front pages" search result'),
   );
 
@@ -86,7 +86,7 @@ function islandora_newspaper_landing_page_admin_settings_submit($form, &$form_st
   switch ($op) {
     case 'edit-submit':
       // Set variables.
-      variable_set('islandora_newspaper_landing_page_parent_title_field', trim($form_state['values']['parent_title_field']));
+      variable_set('islandora_newspaper_landing_page_ancestors_field', trim($form_state['values']['ancestors_field']));
       variable_set('islandora_newspaper_landing_page_sort_field', trim($form_state['values']['sort_field']));
       variable_set('islandora_newspaper_landing_page_sort_order', $form_state['values']['sort_order']);
 

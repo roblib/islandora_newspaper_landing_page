@@ -77,11 +77,11 @@ function islandora_newspaper_landing_page_preprocess_islandora_newspaper_landing
     $variables['last_issue_path'] = $base_url . "/islandora/object/" . $issues[$num_issues - 1];
   }
 
-  $parent_title_field = variable_get('islandora_newspaper_landing_page_parent_title_field', 'PARENT_title_mt');
+  $ancestors_field = variable_get('islandora_newspaper_landing_page_ancestors_field', 'ancestors_ms');
   $sort_field = variable_get('islandora_newspaper_landing_page_sort_field', 'PARENT_dateIssued_dt');
   $sort_order = variable_get('islandora_newspaper_landing_page_sort_order', 'asc');
 
-  $variables['front_pages_path'] = $base_url . "/islandora/search/$parent_title_field%3A%28$islandora_object->label%29%20AND%20RELS_EXT_isPageNumber_literal_ms%3A1?sort=$sort_field%20$sort_order";
+  $variables['front_pages_path'] = $base_url . "/islandora/search/{$ancestors_field}%3A%22{$islandora_object->id}%22%20AND%20RELS_EXT_isPageNumber_literal_ms%3A1?sort={$sort_field}%20{$sort_order}";
   $variables['view_path'] = $base_url . "/islandora/object/" . $islandora_object->id;
   $variables['view_path_label'] = module_exists('islandora_newspaper_calendar_page') ? 'Calendar view' : 'View';
 }
