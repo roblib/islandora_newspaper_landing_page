@@ -292,7 +292,7 @@ function islandora_newspaper_landing_page_get_past_issue($history_date_time) {
   $solr->setCreateDocuments(0);
   $cmodel = $solr->escape('islandora:newspaperIssueCModel');
   $history_date_time = $solr->escape($history_date_time);
-  $date_field = variable_get('islandora_newspaper_calendar_page_date_field', 'mods_originInfo_encoding_iso8601_dateIssued_dt');
+  $date_field = variable_get('islandora_newspaper_calendar_page_date_field', 'mods_originInfo_dateIssued_dt');
   $solr_query = "content_model_ms:$cmodel AND $date_field:$history_date_time";
   $solr_params = array();
   $solr_params['fl'][] = "PID, mods_originInfo_dateIssued_dt, mods_titleInfo_nonSort_ms, mods_titleInfo_title_ms";
